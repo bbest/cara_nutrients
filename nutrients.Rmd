@@ -1,0 +1,68 @@
+---
+title: "nutrients"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F)
+```
+
+Goal: combine nutrient data (serc and ws) per reef and subregion.
+
+## read data
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(lubridate)
+library(DT)
+
+tbl_serc <- read_excel("data/Bird_Key_Reef_serc.xls")
+tbl_ws   <- read_excel("data/Bird_Key_Reef_ws.xls")
+```
+
+## show data
+
+Notice how `tbl_serc.DATE_` and `tbl_ws.Date_`, displayed as tibbles, are already type `dttm`, ie datetime. And that these dates are not already aggregated by year.
+
+To look at these tables in RStudio, use in the Console `View(tbl_serc)`. The `View()` function is only available for interactive use.
+
+
+```{r}
+tbl_serc
+```
+
+```{r}
+tbl_ws
+```
+
+What are fields 11 through 16 after `Phaeophyti` in `tbl_ws`?
+
+## summarize by year
+
+Before we join by year we have to aggregate by year, and decide what fields will we additionally join by?
+
+Per the original goal "to combine nutrient data (serc and ws) per reef and subregion", here are potentially valid fields:
+
+* tbl_serc: BASIN, SEGMENT, ZONE_, STATION, SITE, [LATDEC, LONDEC]
+* tbl_ws: Station, [Longitude, Latitude]
+
+It looks like tbl_serc.STATION (dbl) and tbl_ws.Station (chr) are the only common fields, but they are different data types: double (dbl) vs character (chr). So how do you relate reef and subregion in tbl_serc and especially tbl_ws based on given fields?
+
+How do you want to summarize multiple values for a given year? Let's simply take the average to start.
+
+```{r}
+tbl_yr_chl <- tbl_serc %>% 
+  select(date = DATE_, chla = CHLA_S) %>% 
+  bind_rows(
+    tbl_ws %>% 
+      select(date = Date_, chla = Chl_a)) %>% 
+  mutate(
+    yr = year(date)) %>% 
+  group_by(yr) %>% 
+  summarize(chla = mean(chla))
+
+datatable(tbl_yr_chl)
+```
+
+
